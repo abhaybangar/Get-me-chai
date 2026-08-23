@@ -27,8 +27,8 @@ export default function RootLayout({ children }) {
     >
       <body className="min-h-full flex flex-col">
         <Navbar />
-         <div className="min-h-[89vh]">
-        <main className="flex-1">
+         <div className="min-h-[87vh]  bg-[#000000] bg-[radial-gradient(#ffffff33_1px,#00091d_1px)] bg-[size:20px_20px] text-white">
+        <main>
           {children}
         </main>
         </div>
