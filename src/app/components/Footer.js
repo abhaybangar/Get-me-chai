@@ -1,0 +1,11 @@
+import React from 'react'
+
+const Footer = () => {
+  return (
+   <footer className='bg-black text-white  justify-between px-4 h-16 '>
+   <p className='text-center flex items-center justify-center'>Copyright &copy; Get me A chai - All-right reservejj</p>
+   </footer>
+  )
+}
+
+export default Footer
