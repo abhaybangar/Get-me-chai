@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { signIn, signOut, useSession } from "next-auth/react"
 import React from "react";
+import { useRouter } from "next/navigation";
 
 const Login = () => {
     const { data: session, status } = useSession();
