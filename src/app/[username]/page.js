@@ -63,58 +63,105 @@ const Username = async ({ params }) => {
 
               <ul className="divide-y divide-slate-700">
 
-                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100">
-                  <div className="font-medium">
-                    Shubham
+                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100 flex items-center gap-4">
+
+                  <img
+                    src="/avatar.gif"
+                    alt="Shubham"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-slate-600"
+                  />
+
+                  <div>
+                    <div className="font-medium">
+                      Shubham
+                    </div>
+
+                    <div className="text-sm text-slate-400">
+                      Donated $30 with a message
+                    </div>
                   </div>
 
-                  <div className="text-sm text-slate-400">
-                    Donated $30 with a message
+                </li>
+
+                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100 flex items-center gap-4">
+
+                  <img
+                    src="/avatar.gif"
+                    alt="Shubham"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-slate-600"
+                  />
+
+                  <div>
+                    <div className="font-medium">
+                      Shubham
+                    </div>
+
+                    <div className="text-sm text-slate-400">
+                      Donated $30 with a message
+                    </div>
                   </div>
+
                 </li>
 
 
-                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100">
-                  <div className="font-medium">
-                    Shubham
+                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100 flex items-center gap-4">
+
+                  <img
+                    src="/avatar.gif"
+                    alt="Shubham"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-slate-600"
+                  />
+
+                  <div>
+                    <div className="font-medium">
+                      Shubham
+                    </div>
+
+                    <div className="text-sm text-slate-400">
+                      Donated $30 with a message
+                    </div>
                   </div>
 
-                  <div className="text-sm text-slate-400">
-                    Donated $30 with a message
-                  </div>
                 </li>
 
+                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100 flex items-center gap-4">
 
-                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100">
-                  <div className="font-medium">
-                    Shubham
+                  <img
+                    src="/avatar.gif"
+                    alt="Shubham"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-slate-600"
+                  />
+
+                  <div>
+                    <div className="font-medium">
+                      Shubham
+                    </div>
+
+                    <div className="text-sm text-slate-400">
+                      Donated $30 with a message
+                    </div>
                   </div>
 
-                  <div className="text-sm text-slate-400">
-                    Donated $30 with a message
-                  </div>
                 </li>
 
+                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100 flex items-center gap-4">
 
-                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100">
-                  <div className="font-medium">
-                    Shubham
+                  <img
+                    src="/avatar.gif"
+                    alt="Shubham"
+                    className="w-12 h-12 rounded-full object-cover border-2 border-slate-600"
+                  />
+
+                  <div>
+                    <div className="font-medium">
+                      Shubham
+                    </div>
+
+                    <div className="text-sm text-slate-400">
+                      Donated $30 with a message
+                    </div>
                   </div>
 
-                  <div className="text-sm text-slate-400">
-                    Donated $30 with a message
-                  </div>
-                </li>
-
-
-                <li className="px-5 py-4 hover:bg-slate-800 transition-colors duration-100">
-                  <div className="font-medium">
-                    Shubham
-                  </div>
-
-                  <div className="text-sm text-slate-400">
-                    Donated $30 with a message
-                  </div>
                 </li>
 
               </ul>
