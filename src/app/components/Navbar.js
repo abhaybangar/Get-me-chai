@@ -64,6 +64,16 @@ const Navbar = () => {
                   Dashboard
                 </Link>
 
+                <Link href={`/${session.user.name}`}>
+                  <button
+                    type="button"
+                    className="block px-4 py-3 transition-colors duration-100 hover:bg-gray-200"
+                  >
+                    Your Page
+                  </button>
+                </Link>
+
+
                 {/* Logout */}
                 <button
                   type="button"
