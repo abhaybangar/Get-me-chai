@@ -1,7 +1,17 @@
 import NextAuth from "next-auth";
 import GitHubProvider from "next-auth/providers/github";
 import mongoose from "mongoose";
-import Username from "@/app/[username]/page";
+import User from "../../../../../model/User.js";
+
+let cachedConnection = null;
+
+async function connectToDatabase() {
+  if (!cachedConnection) {
+    cachedConnection = mongoose.connect(process.env.MONGODB_URI);
+  }
+
+  return cachedConnection;
+}
 
 export const authOptions = {
   providers: [
@@ -13,29 +23,48 @@ export const authOptions = {
 
 
   callbacks: {
-    async signIn({ user, account, profile, email, credentials }) {
-      if (account.provider == 'github') {
-        //connect to the databas
-        const client = await mongoose.connect("mongodb://localhost:27017/chai")
-        //check if the user already exists in the database
-        const currentUser = User.findone({ email: email })
-        if (!currentUser) {
-          //create a new user
-          const newUser = new User({
-            email: email,
-            Username: email.split("@")[0],
-          })
-          await newUser.save()
-          user.name = newUser.username
+    async signIn({ user, account, profile }) {
+      if (account?.provider === "github") {
+        const userEmail = user.email || profile?.email;
+        const username = userEmail?.split("@")[0] || profile?.login || user.name;
+
+        if (username) {
+          user.name = username;
         }
-        else {
-          user.name = newUser.username
+
+        if (userEmail) {
+          try {
+            await connectToDatabase();
+
+            const currentUser = await User.findOne({ email: userEmail });
+            if (!currentUser) {
+              const newUser = new User({
+                email: userEmail,
+                name: user.name,
+                username,
+                profilepic: user.image,
+              });
+
+              await newUser.save();
+              user.name = newUser.username;
+            }
+            else {
+              user.name = currentUser.username;
+            }
+          }
+          catch (error) {
+            console.error("Unable to sync GitHub user:", error);
+          }
         }
       }
+
+      return true;
     }
   }
 
 };
 
 
-export { authOptions as GET, authOptions as POST };
+const handler = NextAuth(authOptions);
+
+export { handler as GET, handler as POST };
