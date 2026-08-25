@@ -9,6 +9,13 @@ const UserSchema = new Schema({
     coverpic: { type: String },
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now },
+    razorpayid: {
+  type: String,
+},
+
+razorpaysecret: {
+  type: String,
+},
 })
 
 export default mongoose.models.User || mongoose.model("User", UserSchema)

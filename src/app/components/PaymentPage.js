@@ -5,7 +5,7 @@ import Script from "next/script";
 import {
   fetchuser,
   fetchpayments,
-  initiate
+  initiate,
 } from "../../../actions/useractions";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ToastContainer, toast, Bounce } from "react-toastify";
@@ -20,19 +20,46 @@ const PaymentPage = ({ username }) => {
 
   const [currentUser, setCurrentUser] = useState({});
   const [payments, setPayments] = useState([]);
+  const [paying, setPaying] = useState(false);
 
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  // Fetch creator and payments
-  useEffect(() => {
-    getData();
-  }, []);
+  // ==========================================
+  // FETCH USER + PAYMENTS
+  // ==========================================
 
-  // Payment success message
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        const user = await fetchuser(username);
+
+        if (!user) {
+          toast.error("Creator not found");
+          return;
+        }
+
+        setCurrentUser(user);
+
+        const dbpayments = await fetchpayments(username);
+        setPayments(dbpayments);
+      } catch (error) {
+        console.error(error);
+        toast.error("Unable to load creator");
+      }
+    };
+
+    loadData();
+  }, [username]);
+
+
+  // ==========================================
+  // PAYMENT SUCCESS MESSAGE
+  // ==========================================
+
   useEffect(() => {
     if (searchParams.get("paymentdone") === "true") {
-      toast("Thanks for your donation!", {
+      toast("Thanks for your donation! ☕", {
         position: "top-right",
         autoClose: 5000,
         hideProgressBar: false,
@@ -47,6 +74,11 @@ const PaymentPage = ({ username }) => {
     }
   }, [searchParams, username, router]);
 
+
+  // ==========================================
+  // FORM CHANGE
+  // ==========================================
+
   const handleChange = (e) => {
     setPaymentform({
       ...paymentform,
@@ -54,39 +86,77 @@ const PaymentPage = ({ username }) => {
     });
   };
 
-  const getData = async () => {
-    const user = await fetchuser(username);
-    setCurrentUser(user);
 
-    const dbpayments = await fetchpayments(username);
-    setPayments(dbpayments);
-  };
+  // ==========================================
+  // PAYMENT
+  // ==========================================
 
   const pay = async (amount) => {
     try {
-      if (!currentUser?.razorpayid) {
-        toast.error("Razorpay is not configured for this creator.");
+      if (paying) return;
+
+      // Check Razorpay setup
+      if (
+        !currentUser?.razorpayid ||
+        !currentUser?.razorpaysecret
+      ) {
+        toast.error(
+          "Razorpay is not configured for this creator."
+        );
         return;
       }
 
-      // Create Razorpay order
+      // Validate name/message
+      if (paymentform.name.length < 3) {
+        toast.error("Please enter your name.");
+        return;
+      }
+
+      if (paymentform.message.length < 4) {
+        toast.error("Please enter a message.");
+        return;
+      }
+
+      setPaying(true);
+
+      // ==========================================
+      // CREATE RAZORPAY ORDER
+      // ==========================================
+
       const order = await initiate(
         amount,
         username,
         paymentform
       );
 
+      if (!order?.id) {
+        throw new Error("Unable to create Razorpay order");
+      }
+
       const orderId = order.id;
 
+
+      // ==========================================
+      // CHECK RAZORPAY SCRIPT
+      // ==========================================
+
       if (!window.Razorpay) {
-        toast.error("Razorpay is still loading. Please try again.");
+        toast.error(
+          "Razorpay is still loading. Please try again."
+        );
+
+        setPaying(false);
         return;
       }
+
+
+      // ==========================================
+      // RAZORPAY OPTIONS
+      // ==========================================
 
       const options = {
         key: currentUser.razorpayid,
 
-        // Amount is already in paise
         amount: amount,
 
         currency: "INR",
@@ -99,30 +169,129 @@ const PaymentPage = ({ username }) => {
 
         order_id: orderId,
 
-        callback_url: `${process.env.NEXT_PUBLIC_URL}/api/razorpay`,
+
+        // ==========================================
+        // PAYMENT SUCCESS
+        // ==========================================
+
+        handler: async function (response) {
+          try {
+            const result = await fetch("/api/razorpay", {
+              method: "POST",
+
+              headers: {
+                "Content-Type": "application/json",
+              },
+
+              body: JSON.stringify({
+                razorpay_payment_id:
+                  response.razorpay_payment_id,
+
+                razorpay_order_id:
+                  response.razorpay_order_id,
+
+                razorpay_signature:
+                  response.razorpay_signature,
+              }),
+            });
+
+
+            const data = await result.json();
+
+
+            if (data.success) {
+              toast.success(
+                "Payment successful! Thank you ☕"
+              );
+
+              // Redirect after successful verification
+              window.location.href =
+                `/${username}?paymentdone=true`;
+            } else {
+              toast.error(
+                data.message ||
+                  "Payment verification failed."
+              );
+            }
+          } catch (error) {
+            console.error(
+              "Payment verification error:",
+              error
+            );
+
+            toast.error(
+              "Payment verification failed."
+            );
+          } finally {
+            setPaying(false);
+          }
+        },
+
+
+        // ==========================================
+        // PREFILL
+        // ==========================================
 
         prefill: {
           name: paymentform.name,
         },
+
+
+        // ==========================================
+        // NOTES
+        // ==========================================
 
         notes: {
           username: username,
           message: paymentform.message,
         },
 
+
+        // ==========================================
+        // THEME
+        // ==========================================
+
         theme: {
           color: "#3399cc",
         },
+
+
+        // ==========================================
+        // MODAL CLOSE
+        // ==========================================
+
+        modal: {
+          ondismiss: function () {
+            setPaying(false);
+          },
+        },
       };
+
+
+      // ==========================================
+      // OPEN RAZORPAY
+      // ==========================================
 
       const razorpay = new window.Razorpay(options);
 
       razorpay.open();
+
     } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong while starting payment.");
+      console.error("Payment error:", error);
+
+      toast.error(
+        error?.message ||
+          "Something went wrong while starting payment."
+      );
+
+      setPaying(false);
     }
   };
+
+
+  // ==========================================
+  // CUSTOM PAYMENT
+  // ==========================================
 
   const customPayment = () => {
     const amount = Number(paymentform.amount);
@@ -132,23 +301,31 @@ const PaymentPage = ({ username }) => {
       return;
     }
 
-    // Convert rupees → paise
+    // Rupees → Paise
     pay(amount * 100);
   };
+
+
+  // ==========================================
+  // TOTAL RAISED
+  // ==========================================
 
   const totalRaised = payments.reduce(
     (total, payment) => total + payment.amount,
     0
   );
 
+
   return (
     <>
-      {/* Razorpay Script */}
+      {/* Razorpay Checkout */}
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
         strategy="afterInteractive"
       />
 
+
+      {/* Toast */}
       <ToastContainer
         position="top-right"
         autoClose={5000}
@@ -159,7 +336,11 @@ const PaymentPage = ({ username }) => {
         theme="light"
       />
 
-      {/* Cover */}
+
+      {/* ==========================================
+          COVER
+      ========================================== */}
+
       <div className="relative w-full">
 
         <img
@@ -168,12 +349,17 @@ const PaymentPage = ({ username }) => {
           alt="Cover"
         />
 
+
         {/* Profile */}
+
         <div className="absolute -bottom-16 left-1/2 -translate-x-1/2 border-4 border-white overflow-hidden rounded-full w-32 h-32 md:w-36 md:h-36 bg-slate-800">
 
           <img
             className="rounded-full object-cover w-full h-full"
-            src={currentUser.profilepic || "/avatar.gif"}
+            src={
+              currentUser.profilepic ||
+              "/avatar.gif"
+            }
             alt={username}
           />
 
@@ -182,7 +368,10 @@ const PaymentPage = ({ username }) => {
       </div>
 
 
-      {/* Creator Info */}
+      {/* ==========================================
+          CREATOR INFO
+      ========================================== */}
+
       <div className="text-center mt-24 mb-12 px-4">
 
         <div className="font-bold text-2xl">
@@ -190,25 +379,29 @@ const PaymentPage = ({ username }) => {
         </div>
 
         <div className="text-slate-400 mt-2">
-          Let's help {username} get a chai! ☕
+          Let&apos;s help {username} get a chai! ☕
         </div>
 
         <div className="text-slate-400 mt-2">
-          {payments.length} Payments · ₹{totalRaised} raised
+          {payments.length} Payments · ₹
+          {totalRaised} raised
         </div>
 
       </div>
 
 
-      {/* Main Section */}
+      {/* ==========================================
+          MAIN SECTION
+      ========================================== */}
+
       <div className="max-w-6xl mx-auto px-4 pb-16">
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
 
-          {/* ========================= */}
-          {/* SUPPORTERS */}
-          {/* ========================= */}
+          {/* ======================================
+              SUPPORTERS
+          ====================================== */}
 
           <div className="bg-slate-900 rounded-2xl text-white p-5 md:p-8 border border-slate-700 shadow-lg">
 
@@ -216,12 +409,17 @@ const PaymentPage = ({ username }) => {
               Recent Supporters
             </h2>
 
+
             {payments.length === 0 ? (
 
               <div className="text-slate-400 text-center py-10">
+
                 No payments yet.
+
                 <br />
+
                 Be the first one to support {username}!
+
               </div>
 
             ) : (
@@ -231,7 +429,9 @@ const PaymentPage = ({ username }) => {
                 {payments.map((payment, index) => (
 
                   <li
-                    key={payment._id || index}
+                    key={
+                      payment._id || index
+                    }
                     className="flex gap-3 items-center p-3 rounded-lg hover:bg-slate-800 transition-colors duration-100"
                   >
 
@@ -241,6 +441,7 @@ const PaymentPage = ({ username }) => {
                       className="w-11 h-11 rounded-full object-cover border border-slate-600"
                     />
 
+
                     <div className="min-w-0">
 
                       <div className="font-medium">
@@ -248,16 +449,24 @@ const PaymentPage = ({ username }) => {
                       </div>
 
                       <div className="text-sm text-slate-400">
+
                         Donated{" "}
+
                         <span className="text-white font-semibold">
                           ₹{payment.amount}
                         </span>
+
                       </div>
 
+
                       {payment.message && (
+
                         <div className="text-sm text-slate-500 mt-1 truncate">
-                          "{payment.message}"
+
+                          &quot;{payment.message}&quot;
+
                         </div>
+
                       )}
 
                     </div>
@@ -273,9 +482,9 @@ const PaymentPage = ({ username }) => {
           </div>
 
 
-          {/* ========================= */}
-          {/* MAKE PAYMENT */}
-          {/* ========================= */}
+          {/* ======================================
+              MAKE PAYMENT
+          ====================================== */}
 
           <div className="bg-slate-900 rounded-2xl text-white p-5 md:p-8 border border-slate-700 shadow-lg">
 
@@ -288,7 +497,8 @@ const PaymentPage = ({ username }) => {
             </p>
 
 
-            {/* Name */}
+            {/* NAME */}
+
             <div className="mb-4">
 
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -307,7 +517,8 @@ const PaymentPage = ({ username }) => {
             </div>
 
 
-            {/* Message */}
+            {/* MESSAGE */}
+
             <div className="mb-4">
 
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -326,7 +537,8 @@ const PaymentPage = ({ username }) => {
             </div>
 
 
-            {/* Custom Amount */}
+            {/* CUSTOM AMOUNT */}
+
             <div className="mb-5">
 
               <label className="block text-sm font-medium text-slate-300 mb-2">
@@ -354,50 +566,61 @@ const PaymentPage = ({ username }) => {
             </div>
 
 
-            {/* Pay Custom Amount */}
+            {/* PAY CUSTOM */}
+
             <button
               onClick={customPayment}
               type="button"
               disabled={
+                paying ||
                 paymentform.name.length < 3 ||
                 paymentform.message.length < 4 ||
                 !paymentform.amount
               }
               className="w-full text-white bg-gradient-to-br from-purple-600 to-blue-500 hover:bg-gradient-to-bl font-medium rounded-lg text-sm px-5 py-3 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Pay ₹{paymentform.amount || "0"}
+              {paying
+                ? "Processing..."
+                : `Pay ₹${paymentform.amount || "0"}`}
             </button>
 
 
-            {/* Preset Amounts */}
+            {/* PRESET AMOUNTS */}
+
             <div className="mt-6">
 
               <p className="text-sm text-slate-400 mb-3">
                 Or choose an amount
               </p>
 
+
               <div className="grid grid-cols-3 gap-2">
 
                 <button
                   type="button"
+                  disabled={paying}
                   onClick={() => pay(1000)}
-                  className="bg-slate-800 border border-slate-700 p-3 rounded-lg hover:bg-slate-700 transition"
+                  className="bg-slate-800 border border-slate-700 p-3 rounded-lg hover:bg-slate-700 transition disabled:opacity-50"
                 >
                   ₹10
                 </button>
 
+
                 <button
                   type="button"
+                  disabled={paying}
                   onClick={() => pay(2000)}
-                  className="bg-slate-800 border border-slate-700 p-3 rounded-lg hover:bg-slate-700 transition"
+                  className="bg-slate-800 border border-slate-700 p-3 rounded-lg hover:bg-slate-700 transition disabled:opacity-50"
                 >
                   ₹20
                 </button>
 
+
                 <button
                   type="button"
+                  disabled={paying}
                   onClick={() => pay(3000)}
-                  className="bg-slate-800 border border-slate-700 p-3 rounded-lg hover:bg-slate-700 transition"
+                  className="bg-slate-800 border border-slate-700 p-3 rounded-lg hover:bg-slate-700 transition disabled:opacity-50"
                 >
                   ₹30
                 </button>
